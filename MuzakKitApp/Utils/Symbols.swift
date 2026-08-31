@@ -5,10 +5,8 @@
 //  Created by Damien L Thompson on 2025-01-17.
 //
 
-import SFSymbolsMacro
 import SwiftUI
 
-@SFSymbol
 enum Symbols: String {
 
     // Tabs
@@ -51,4 +49,19 @@ enum Symbols: String {
     case guitars
     case checkMarkCircle = "checkmark.circle"
     case appIcon = "waveform.path"
+}
+
+extension Symbols {
+
+    var image: Image {
+        Image(systemName: rawValue)
+    }
+
+    var name: String {
+        rawValue
+    }
+
+    func callAsFunction() -> String {
+        rawValue
+    }
 }

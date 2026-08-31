@@ -105,8 +105,6 @@ Pushes and pull requests run an unsigned iOS Simulator build on GitHub Actions u
 
 The workflow lives at `.github/workflows/ios-build.yml` and can also be started manually from the Actions tab with "Run workflow". It prints the selected Xcode version, lists installed SDKs, resolves Swift Package Manager dependencies, and builds the shared `MuzakKitApp` scheme for `generic/platform=iOS Simulator` with code signing disabled.
 
-The project depends on `SFSymbolsMacro`, so CI passes `-skipMacroValidation` to `xcodebuild`. This avoids Xcode's interactive "enable macro" prompt on fresh GitHub runners while still using the pinned package version from `Package.resolved`.
-
 This validates Swift compilation, package resolution, resource processing, and linking. It does not validate real Apple Music authorization, subscription state, catalog playback, or whether a specific Apple Music track accepts `MusicPlayer.State.playbackRate` at runtime. Playback speed behavior still needs testing in a real MusicKit playback environment after the simulator build succeeds.
   
 ## Libraries & Frameworks Used
