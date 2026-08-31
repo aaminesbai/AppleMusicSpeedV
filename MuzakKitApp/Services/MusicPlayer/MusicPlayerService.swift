@@ -709,15 +709,15 @@ extension MusicPlayerService {
     private static func sortedRecentlyAdded(_ items: [MPMediaItem]) -> [MPMediaItem] {
 
         items.sorted {
-            $0.dateAdded > $1.dateAdded
+            ($0.dateAdded ?? .distantPast) > ($1.dateAdded ?? .distantPast)
         }
     }
 
     private static func sortedCollectionsByRecentlyAdded(_ collections: [MPMediaItemCollection]) -> [MPMediaItemCollection] {
 
         collections.sorted {
-            let lhs = $0.items.map(\.dateAdded).max() ?? .distantPast
-            let rhs = $1.items.map(\.dateAdded).max() ?? .distantPast
+            let lhs = $0.items.map { $0.dateAdded ?? .distantPast }.max() ?? .distantPast
+            let rhs = $1.items.map { $0.dateAdded ?? .distantPast }.max() ?? .distantPast
             return lhs > rhs
         }
     }
