@@ -34,9 +34,9 @@ MuzakKit is a SwiftUI-based iOS demo app that integrates with Apple Music throug
   
 ## Prerequisites
 
-- **Apple Developer Account**: Required for using MusicKit and accessing the Apple Music API.
-- **Apple Music Subscription**: Required to play music and access full playback features.
-- **Xcode 16.2+**: The project currently targets iOS 18.6 for the app target and uses SwiftUI APIs from the Xcode 16 generation.
+- **Apple Account**: Required by AltStore Classic to re-sign sideloaded apps. A free Apple Account can install personal apps, but they expire after 7 days.
+- **Apple Music Subscription**: Required to play Apple Music content and access full playback features.
+- **Xcode 16.2+ on CI**: The project currently targets iOS 18.6 for the app target and uses SwiftUI APIs from the Xcode 16 generation.
 
 ## Features in Detail
 
@@ -84,20 +84,23 @@ Known limitations:
 
 ## Building without a Mac
 
-This repository can be edited on Windows and pushed to GitHub, then built on a macOS CI provider such as Codemagic.
+This repository can be edited on Windows and pushed to GitHub, then built on a macOS CI provider.
 
-Use Xcode's command line tools on macOS. A CI archive command should look like:
+The free sideload workflow builds the iPhone app without Apple Distribution signing:
 
 ```sh
 xcodebuild \
   -project MuzakKitApp.xcodeproj \
   -scheme MuzakKitApp \
-  -sdk iphoneos \
   -configuration Release \
-  archive
+  -sdk iphoneos \
+  -destination 'generic/platform=iOS' \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  build
 ```
 
-Do not commit signing certificates, provisioning profile UUIDs, developer credentials, or API keys. Configure signing and Apple Music capabilities in Apple Developer/Xcode or the CI provider's secure settings.
+The generated `.ipa` is an unsigned sideload package. AltStore Classic must re-sign it with the user's Apple ID before installation on a personal iPhone.
 
 ## GitHub Actions CI
 
@@ -107,11 +110,15 @@ The workflow lives at `.github/workflows/ios-build.yml` and can also be started 
 
 This validates Swift compilation, package resolution, resource processing, and linking. It does not validate real Apple Music authorization, subscription state, catalog playback, or whether a specific Apple Music track accepts `MusicPlayer.State.playbackRate` at runtime. Playback speed behavior still needs testing in a real MusicKit playback environment after the simulator build succeeds.
 
-## Codemagic TestFlight
+## Free Sideload Builds
 
-`codemagic.yaml` defines a manual-only `ios-testflight` workflow for signed iPhone Release builds and TestFlight upload. It uses `MuzakKitApp.xcodeproj`, the shared `MuzakKitApp` scheme, App Store signing, and the bundle identifier `com.aaminesbai.AppleMusicSpeedV`.
+`.github/workflows/ios-sideload-build.yml` defines a manual-only GitHub Actions workflow that builds `MuzakKitApp.xcodeproj` with the shared `MuzakKitApp` scheme for `iphoneos`, packages `MuzakKitApp-unsigned.ipa`, and uploads it as the `ios-sideload-artifacts` artifact.
 
-The workflow expects Codemagic secure settings for the App Store Connect integration named `codemagic`, code signing assets, and an `APP_STORE_APPLE_ID` environment variable. No Apple credentials, certificates, provisioning profiles, or API keys are stored in this repository.
+`codemagic.yaml` also defines a manual-only `ios-sideload` workflow that performs the same unsigned iPhone build and publishes the `.ipa`, zipped `.app`, build info, and logs as Codemagic artifacts.
+
+These workflows do not use App Store Connect, TestFlight, Apple Distribution certificates, App Store provisioning profiles, or API keys. The bundle identifier is `com.aaminesbai.AppleMusicSpeedV`.
+
+MusicKit remains in the app, but free sideloading has an Apple-platform limitation: Apple documents MusicKit app integration through the MusicKit App Service for an App ID, while a free Apple Account/Personal Team is limited compared with the paid Apple Developer Program. The app may install through AltStore, but Apple Music authorization, library access, catalog playback, and playback-rate behavior still need runtime testing on the target iPhone with the user's Apple Music account.
   
 ## Libraries & Frameworks Used
 

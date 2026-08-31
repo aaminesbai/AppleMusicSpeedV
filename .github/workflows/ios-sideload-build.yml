@@ -1,45 +1,44 @@
-workflows:
-  ios-sideload:
-    name: iOS Sideload Artifact
-    instance_type: mac_mini_m2
-    max_build_duration: 120
+name: iOS Sideload Artifact
 
-    # No triggering section: start this workflow manually in Codemagic.
-    # This workflow does not use App Store Connect, TestFlight, Apple Distribution
-    # certificates, or App Store provisioning profiles.
-    environment:
-      vars:
-        XCODE_PROJECT: MuzakKitApp.xcodeproj
-        XCODE_SCHEME: MuzakKitApp
-      xcode: latest
+on:
+  workflow_dispatch:
 
-    scripts:
+jobs:
+  build:
+    name: Build iPhone Sideload Artifact
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Show Xcode version
-        script: |
+        run: |
           xcodebuild -version
           xcodebuild -showsdks
 
       - name: Resolve Swift packages
-        script: |
-          cd "$CM_BUILD_DIR"
+        run: |
+          set -o pipefail
+          mkdir -p build-logs
           xcodebuild \
             -resolvePackageDependencies \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME"
+            -project MuzakKitApp.xcodeproj \
+            -scheme MuzakKitApp \
+            2>&1 | tee build-logs/resolve-packages.log
 
       - name: Build unsigned iPhone app
-        script: |
+        run: |
           set -o pipefail
-          cd "$CM_BUILD_DIR"
           mkdir -p build-logs build/sideload
 
           xcodebuild \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
+            -project MuzakKitApp.xcodeproj \
+            -scheme MuzakKitApp \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath "$CM_BUILD_DIR/build/DerivedData" \
+            -derivedDataPath "$PWD/build/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -48,9 +47,8 @@ workflows:
             2>&1 | tee build-logs/iphoneos-build.log
 
       - name: Package sideload artifacts
-        script: |
-          cd "$CM_BUILD_DIR"
-          APP_PATH="$(find "$CM_BUILD_DIR/build/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" -type d | head -n 1)"
+        run: |
+          APP_PATH="$(find "$PWD/build/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" -type d | head -n 1)"
 
           if [ -z "$APP_PATH" ]; then
             echo "No .app was produced by xcodebuild."
@@ -73,9 +71,12 @@ workflows:
 
           codesign -dv "$APP_PATH" > build/sideload/codesign-check.txt 2>&1 || true
 
-    artifacts:
-      - build/sideload/*.ipa
-      - build/sideload/*.zip
-      - build/sideload/*.txt
-      - build-logs/*.log
-      - /tmp/xcodebuild_logs/*.log
+      - name: Upload sideload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-sideload-artifacts
+          path: |
+            build/sideload/*.ipa
+            build/sideload/*.zip
+            build/sideload/*.txt
+            build-logs/*.log
