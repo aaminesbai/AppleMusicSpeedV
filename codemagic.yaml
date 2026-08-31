@@ -1,0 +1,81 @@
+workflows:
+  ios-testflight:
+    name: iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+
+    # No triggering section: start this workflow manually in Codemagic so TestFlight
+    # uploads do not run on every GitHub push.
+    integrations:
+      app_store_connect: codemagic
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.aaminesbai.AppleMusicSpeedV
+      vars:
+        BUNDLE_ID: com.aaminesbai.AppleMusicSpeedV
+        XCODE_PROJECT: MuzakKitApp.xcodeproj
+        XCODE_SCHEME: MuzakKitApp
+      xcode: latest
+
+    scripts:
+      - name: Show Xcode version
+        script: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Validate Codemagic variables
+        script: |
+          : "${APP_STORE_APPLE_ID:?Set APP_STORE_APPLE_ID in Codemagic environment variables.}"
+
+      - name: Resolve Swift packages
+        script: |
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME"
+
+      - name: Set up App Store code signing
+        script: |
+          xcode-project use-profiles \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --archive-method app-store \
+            --custom-export-options='{"testFlightInternalTestingOnly": true}'
+
+      - name: Increment build number
+        script: |
+          cd "$CM_BUILD_DIR"
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || true)
+
+          case "$LATEST_BUILD_NUMBER" in
+            ''|*[!0-9]*) LATEST_BUILD_NUMBER=0 ;;
+          esac
+
+          NEW_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
+          agvtool new-version -all "$NEW_BUILD_NUMBER"
+
+      - name: Build signed IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME" \
+            --config Release \
+            --archive-flags="-destination 'generic/platform=iOS'" \
+            --archive-xcargs="PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID COMPILER_INDEX_STORE_ENABLE=NO" \
+            --export-options-plist="$HOME/export_options.plist"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/xcarchive/*.xcarchive
+      - build/ios/xcarchive/*.xcarchive/dSYMs/*.dSYM
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+        submit_to_app_store: false

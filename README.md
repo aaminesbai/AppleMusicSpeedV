@@ -106,6 +106,12 @@ Pushes and pull requests run an unsigned iOS Simulator build on GitHub Actions u
 The workflow lives at `.github/workflows/ios-build.yml` and can also be started manually from the Actions tab with "Run workflow". It prints the selected Xcode version, lists installed SDKs, resolves Swift Package Manager dependencies, and builds the shared `MuzakKitApp` scheme for `generic/platform=iOS Simulator` with code signing disabled.
 
 This validates Swift compilation, package resolution, resource processing, and linking. It does not validate real Apple Music authorization, subscription state, catalog playback, or whether a specific Apple Music track accepts `MusicPlayer.State.playbackRate` at runtime. Playback speed behavior still needs testing in a real MusicKit playback environment after the simulator build succeeds.
+
+## Codemagic TestFlight
+
+`codemagic.yaml` defines a manual-only `ios-testflight` workflow for signed iPhone Release builds and TestFlight upload. It uses `MuzakKitApp.xcodeproj`, the shared `MuzakKitApp` scheme, App Store signing, and the bundle identifier `com.aaminesbai.AppleMusicSpeedV`.
+
+The workflow expects Codemagic secure settings for the App Store Connect integration named `codemagic`, code signing assets, and an `APP_STORE_APPLE_ID` environment variable. No Apple credentials, certificates, provisioning profiles, or API keys are stored in this repository.
   
 ## Libraries & Frameworks Used
 
