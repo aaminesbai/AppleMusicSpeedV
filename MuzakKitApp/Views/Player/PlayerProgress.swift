@@ -17,7 +17,7 @@ struct PlayerProgress: View {
 
         if let progress = musicPlayerManager.currentPlayBackTime,
            progress < duration {
-            return progress
+            return max(0.0, progress)
         }
 
         return 0.0
@@ -32,7 +32,14 @@ struct PlayerProgress: View {
 
         Group {
 
-            ProgressView(value: progress, total: duration)
+            Slider(
+                value: Binding(
+                    get: { progress },
+                    set: { musicPlayerManager.seek(to: $0) }
+                ),
+                in: 0...max(duration, 1)
+            )
+            .accessibilityLabel("Playback Position")
 
             HStack {
                 Text(progress, format: .duration(style: .positional))

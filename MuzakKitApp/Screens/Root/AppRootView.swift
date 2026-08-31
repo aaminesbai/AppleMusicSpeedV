@@ -20,7 +20,7 @@ struct AppRootView: View {
     private var showDefaultScreen: Bool {
 
         let authStatus = musicKitService.authStatus
-        return authStatus != .authorized
+        return authStatus != .authorized && musicPlayer.localLibraryAuthorizationStatus != .authorized
     }
 
     private var hasSeenAuthMessage: Bool {
@@ -52,11 +52,6 @@ struct AppRootView: View {
                     Tab(value: AppRootScreen.search) { AppRootScreen.search.destination
                     } label: {
                         AppRootScreen.search.label
-                    }
-
-                    Tab(value: AppRootScreen.sideload) { AppRootScreen.sideload.destination
-                    } label: {
-                        AppRootScreen.sideload.label
                     }
 
                     Tab(value: AppRootScreen.settings) { AppRootScreen.settings.destination
@@ -97,7 +92,7 @@ struct AppRootView: View {
             }.frame(width: 250, height: 250)
         } description: {
             if hasSeenAuthMessage {
-                Text("This app needs permission to view your Apple Music Library. Authorize to continue.")
+                Text("This app needs permission to view your music library. Authorize to continue.")
             }
         } actions: {
             if hasSeenAuthMessage {
@@ -128,6 +123,5 @@ struct AppRootView: View {
     AppRootView(selection: .constant(.browse))
         .environment(musicService)
         .environment(MusicPlayerService())
-        .environment(SideloadMusicPlayerService())
         .environment(NavPath())
 }

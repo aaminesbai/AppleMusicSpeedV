@@ -28,6 +28,14 @@ struct SettingsScreen: View {
         }
     }
 
+    private var playbackPitchModeBinding: Binding<PlaybackPitchMode> {
+        Binding {
+            musicPlayer.playbackPitchMode
+        } set: { value in
+            musicPlayer.setPlaybackPitchMode(value)
+        }
+    }
+
     var body: some View {
 
         Form {
@@ -35,6 +43,16 @@ struct SettingsScreen: View {
                 defaultSpeedControl
 
                 Toggle("Remember Playback Speed", isOn: rememberPlaybackSpeedBinding)
+
+                Picker("Pitch Mode", selection: playbackPitchModeBinding) {
+                    ForEach(PlaybackPitchMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+
+                Text(musicPlayer.playbackPitchMode.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 Button {
                     haptics.impact(.light)

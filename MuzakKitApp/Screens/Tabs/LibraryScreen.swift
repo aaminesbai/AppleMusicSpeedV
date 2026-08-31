@@ -6,79 +6,54 @@
 //
 
 import SwiftUI
-import MusicKit
 
 struct LibraryScreen: View {
 
-    @Environment(NavPath.self) private var navigation
-    @Environment(\.navigationNamespace) private var navigationNamespace
+    @Environment(MusicPlayerService.self) private var musicPlayer
 
     var body: some View {
 
-        GeometryReader { geometry in
+        List {
+            ForEach(
+                AppRootScreen.LibraryList.allCases,
+                id: \.id
+            ) { item in
 
-            let width = (geometry.size.width / 2) - 24
-
-            LoadingContainerView(loadingAction: fetchData) { items in
-
-                List {
-
-                    ForEach(
-                        AppRootScreen.LibraryList.allCases,
-                        id: \.id
-                    ) { item in
-
-                        NavigationLink(value: item) {
-                            HStack {
-                                Image(systemName: item.icon)
-                                    .frame(minWidth: 30)
-                                    .imageScale(.large)
-                                    .foregroundStyle(.red)
-                                    .padding(.horizontal, 6)
-                                Text(item.title).font(.title2)
-                            }
-                        }
+                NavigationLink(value: item) {
+                    HStack {
+                        Image(systemName: item.icon)
+                            .frame(minWidth: 30)
+                            .imageScale(.large)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 6)
+                        Text(item.title).font(.title2)
                     }
-
-                    Text("Recently Added")
-                        .sectionHeader()
-                        .padding(.top, 14)
-
-                    LazyVGrid(
-                        columns: [
-                            GridItem(spacing: 12),
-                            GridItem(spacing: 12)
-                        ],
-                        alignment: .center,
-                        spacing: 24
-                    ) {
-                        ForEach(items, id: \.id) { item in
-
-                            AlbumItemCell(item: item, size: width)
-                                .onTapGesture {
-                                    navigation.path.append(item)
-                                }
-                                .id(item.id)
-                        }
-                    }.listRowSeparator(.hidden)
                 }
-            }.listStyle(.plain)
+            }
+
+            Section("Recently Added") {
+                if musicPlayer.recentlyAddedSongs.isEmpty {
+                    ContentUnavailableView("No Recent Songs", systemImage: Symbols.musicNoteList.name)
+                } else {
+                    ForEach(musicPlayer.recentlyAddedSongs, id: \.persistentID) { item in
+                        Button {
+                            musicPlayer.playLocalItem(item, from: musicPlayer.localSongs)
+                        } label: {
+                            LocalMediaItemRow(item: item)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
+        .listStyle(.plain)
         .navigationTitle("Library")
-    }
-}
-
-extension LibraryScreen {
-
-    private func fetchData() async throws -> MusicItemCollection<Album> {
-
-        var request: MusicLibraryRequest<Album> = MusicLibraryRequest()
-        request.limit = 26
-        request.sort(by: \.libraryAddedDate, ascending: false)
-
-        let albumResponse = try await request.response()
-
-        return albumResponse.items
+        .task {
+            musicPlayer.requestLocalLibraryAuthorizationIfNeeded()
+        }
+        .refreshable {
+            musicPlayer.reloadLocalLibrary()
+        }
     }
 }
 

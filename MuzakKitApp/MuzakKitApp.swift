@@ -13,7 +13,6 @@ struct MuzakKitApp: App {
 
     let musicKitSercice: MusicKitService
     let musicPlayerManager: MusicPlayerService
-    let sideloadMusicPlayer: SideloadMusicPlayerService
     let navigation: NavPath
 
     @State private var selection: AppRootScreen = .browse
@@ -22,7 +21,6 @@ struct MuzakKitApp: App {
     init() {
         self.musicKitSercice = MusicKitServiceFactory.create()
         self.musicPlayerManager = MusicPlayerService()
-        self.sideloadMusicPlayer = SideloadMusicPlayerService()
         self.navigation = NavPath()
         UIView.appearance().tintColor = .systemPink
     }
@@ -34,7 +32,6 @@ struct MuzakKitApp: App {
                 .preferredColorScheme(.dark)
                 .environment(musicKitSercice)
                 .environment(musicPlayerManager)
-                .environment(sideloadMusicPlayer)
                 .environment(navigation)
                 .environment(\.navigationNamespace, navigationNamespace)
         }

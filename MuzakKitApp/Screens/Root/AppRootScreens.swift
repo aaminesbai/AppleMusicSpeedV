@@ -13,7 +13,6 @@ enum AppRootScreen: Hashable, CaseIterable, Identifiable {
     case browse
     case library
     case search
-    case sideload
     case settings
 
     var id: AppRootScreen { self }
@@ -24,6 +23,7 @@ enum AppRootScreen: Hashable, CaseIterable, Identifiable {
         case artists
         case albums
         case genres
+        case songs
 
         var id: String { self.rawValue }
 
@@ -40,6 +40,8 @@ enum AppRootScreen: Hashable, CaseIterable, Identifiable {
                 Symbols.squareStack.name
             case .genres:
                 Symbols.guitars.name
+            case .songs:
+                Symbols.musicNoteList.name
             }
         }
     }
@@ -68,8 +70,6 @@ extension AppRootScreen {
             Label("Library", systemImage: Symbols.musicNoteList.name)
         case .search:
             Label("Search", systemImage: Symbols.search.name)
-        case .sideload:
-            Label("Sideload", systemImage: Symbols.musicNoteList.name)
         case .settings:
             Label("Settings", systemImage: Symbols.settings.name)
         }
@@ -91,10 +91,6 @@ extension AppRootScreen {
             AppRootNavigation {
                 SearchScreen()
             }
-        case .sideload:
-            AppRootNavigation {
-                SideloadLibraryScreen()
-            }
         case .settings:
             AppRootNavigation {
                 SettingsScreen()
@@ -108,10 +104,11 @@ extension AppRootScreen.LibraryList {
     @ViewBuilder
     var destination: some View {
         switch self {
-        case .playlists: PlaylistLibraryScreen()
-        case .artists: ArtistLibraryScreen()
-        case .albums: AlbumLibraryScreen()
-        case .genres: GenreLibraryScreen()
+        case .playlists: LocalMediaLibraryScreen(section: .playlists)
+        case .artists: LocalMediaLibraryScreen(section: .artists)
+        case .albums: LocalMediaLibraryScreen(section: .albums)
+        case .genres: LocalMediaLibraryScreen(section: .genres)
+        case .songs: LocalMediaLibraryScreen(section: .songs)
         }
     }
 }

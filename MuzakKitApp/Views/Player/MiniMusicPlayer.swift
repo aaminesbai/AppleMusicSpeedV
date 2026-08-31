@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MusicKit
+import UIKit
 
 struct MiniMusicPlayer: View {
 
@@ -17,15 +18,19 @@ struct MiniMusicPlayer: View {
     let nameSpace: Namespace.ID
 
     private var title: String {
-        musicPlayer.currentItem?.title ?? "Song Title"
+        musicPlayer.displayTitle
     }
 
     private var subtitle: String {
-        musicPlayer.currentItem?.subtitle ?? "Album Name"
+        musicPlayer.displaySubtitle
     }
 
     private var artwork: Artwork? {
         musicPlayer.currentItem?.artwork
+    }
+
+    private var localArtworkImage: UIImage? {
+        musicPlayer.localArtworkImage
     }
 
     var body: some View {
@@ -59,7 +64,12 @@ extension MiniMusicPlayer {
 
         Group {
 
-            if let artwork {
+            if let localArtworkImage {
+                Image(uiImage: localArtworkImage)
+                    .resizable()
+                    .scaledToFill()
+                    .artworkCornerRadius(.small)
+            } else if let artwork {
                 ArtworkImage(artwork, width: 34, height: 34)
                     .artworkCornerRadius(.small)
             } else {

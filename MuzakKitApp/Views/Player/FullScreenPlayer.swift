@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MusicKit
+import UIKit
 
 struct FullScreenPlayer: View {
 
@@ -29,8 +30,12 @@ struct FullScreenPlayer: View {
         musicPlayer.artwork
     }
 
+    private var localArtworkImage: UIImage? {
+        musicPlayer.localArtworkImage
+    }
+
     private var hasBackground: Bool {
-        artwork?.backgroundColor != nil
+        artwork?.backgroundColor != nil || localArtworkImage != nil
     }
 
     private var defaultBackground: Color {
@@ -47,25 +52,15 @@ struct FullScreenPlayer: View {
     }
 
     private var title: String {
-        musicPlayer.currentItem?.title ?? "Song Title"
+        musicPlayer.displayTitle
     }
 
     private var subtitle: String {
-        musicPlayer.currentItem?.subtitle ?? "Album Name"
+        musicPlayer.displaySubtitle
     }
 
     private var duration: Double? {
-
-        guard let item = musicPlayer.currentItem?.item else { return nil }
-
-        switch item {
-        case .song(let song):
-            return song.duration
-        case .musicVideo(let musicVideo):
-            return musicVideo.duration
-        @unknown default:
-            return nil
-        }
+        musicPlayer.currentDuration
     }
 
     private func handleProgressTimer(_ isDismissing: Bool = false) {
@@ -101,7 +96,6 @@ struct FullScreenPlayer: View {
                     playerInfo
                     playerControls
                     volumeSlider
-                        .highPriorityGesture(DragGesture())
                         .opacity(opacity)
                 }.padding(.horizontal, 8)
             }
@@ -110,7 +104,6 @@ struct FullScreenPlayer: View {
             .padding(.top, proxy.safeAreaInsets.top)
         }
         .offset(y: toggleView ? playerOffset : .zero)
-        .gesture(modalGesture)
         .onAppear { playerOffset = .zero }
     }
 }
@@ -147,6 +140,7 @@ extension FullScreenPlayer {
                     toggleView.toggle()
                 }
             }
+            .gesture(modalGesture)
     }
 
     @ViewBuilder
@@ -154,7 +148,11 @@ extension FullScreenPlayer {
 
         Group {
 
-            if let artwork = artwork {
+            if let localArtworkImage {
+                Image(uiImage: localArtworkImage)
+                    .resizable()
+                    .scaledToFill()
+            } else if let artwork = artwork {
                 ArtworkImage(artwork, width: width, height: width)
                     .scaleEffect(isPlaying ? 1 : 0.8)
                     .animation(

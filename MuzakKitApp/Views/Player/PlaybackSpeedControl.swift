@@ -12,8 +12,6 @@ struct PlaybackSpeedControl: View {
     @Environment(MusicPlayerService.self) private var musicPlayer
     @Environment(\.haptics) private var haptics
 
-    private let presets: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0]
-
     private var playbackSpeedBinding: Binding<Double> {
         Binding {
             Double(musicPlayer.preferredPlaybackRate)
@@ -27,7 +25,6 @@ struct PlaybackSpeedControl: View {
         VStack(alignment: .leading, spacing: 10) {
             header
             speedSlider
-            presetButtons
 
             if let message = musicPlayer.playbackRateMessage {
                 Label(message, systemImage: Symbols.warning.name)
@@ -85,48 +82,13 @@ extension PlaybackSpeedControl {
             .foregroundStyle(.secondary)
         }
     }
-
-    private var presetButtons: some View {
-
-        HStack(spacing: 8) {
-            ForEach(presets, id: \.self) { preset in
-                Button {
-                    haptics.impact(.light)
-                    musicPlayer.setPreferredPlaybackRate(preset)
-                } label: {
-                    Text(presetLabel(preset))
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .monospacedDigit()
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .tint(isSelected(preset) ? .pink : .secondary)
-                .accessibilityLabel("Set Playback Speed")
-                .accessibilityValue(accessibilitySpeedValue(preset))
-            }
-        }
-    }
 }
 
 // MARK: - Helpers
 extension PlaybackSpeedControl {
 
-    private func isSelected(_ speed: Float) -> Bool {
-        return abs(musicPlayer.preferredPlaybackRate - speed) < 0.01
-    }
-
     private func formattedSpeed(_ speed: Float) -> String {
         return String(format: "%.2f×", Double(speed))
-    }
-
-    private func presetLabel(_ speed: Float) -> String {
-
-        if speed == 1.0 {
-            return "1×"
-        }
-
-        return String(format: "%g×", Double(speed))
     }
 
     private func accessibilitySpeedValue(_ speed: Float) -> String {
