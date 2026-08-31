@@ -53,6 +53,11 @@ struct AppRootView: View {
                     } label: {
                         AppRootScreen.search.label
                     }
+
+                    Tab(value: AppRootScreen.settings) { AppRootScreen.settings.destination
+                    } label: {
+                        AppRootScreen.settings.label
+                    }
                 }
                 .onChange(of: selection) { navigation.path = NavigationPath() }
                 .scrollIndicators(.hidden)

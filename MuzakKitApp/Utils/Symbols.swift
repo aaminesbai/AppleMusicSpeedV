@@ -14,6 +14,7 @@ enum Symbols: String {
     // Tabs
     case browse = "square.grid.2x2.fill"
     case search = "magnifyingglass"
+    case settings = "gearshape"
 
     // MusicItem
     case albumPlaceholder = "waveform.circle"

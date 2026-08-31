@@ -212,6 +212,12 @@ extension FullScreenPlayer {
                     .opacity(opacity)
                     .onAppear { handleProgressTimer()}
                     .onDisappear { handleProgressTimer(true) }
+
+                PlaybackSpeedControl()
+                    .tint(.primary)
+                    .foregroundStyle(.primary)
+                    .opacity(opacity)
+                    .padding(.top, 12)
             }
         }.frame(maxWidth: .infinity)
     }

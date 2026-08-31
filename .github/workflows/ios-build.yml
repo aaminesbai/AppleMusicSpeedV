@@ -1,0 +1,52 @@
+name: iOS Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build MuzakKit
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Resolve Swift packages
+        run: |
+          set -o pipefail
+          mkdir -p build-logs
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project MuzakKitApp.xcodeproj \
+            -scheme MuzakKitApp \
+            2>&1 | tee build-logs/resolve-packages.log
+
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          mkdir -p build-logs
+          xcodebuild \
+            -project MuzakKitApp.xcodeproj \
+            -scheme MuzakKitApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build \
+            2>&1 | tee build-logs/xcodebuild.log
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-logs
+          path: build-logs

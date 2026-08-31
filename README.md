@@ -30,12 +30,13 @@ MuzakKit is a SwiftUI-based iOS demo app that integrates with Apple Music throug
   - Artist details with discography
   - Playlist details with track listing
 - **Music Playback**: Play music directly from the Apple Music catalog if the user has an active subscription.
+- **Playback Speed**: Adjust playback speed from the Now Playing screen or Settings.
   
 ## Prerequisites
 
 - **Apple Developer Account**: Required for using MusicKit and accessing the Apple Music API.
 - **Apple Music Subscription**: Required to play music and access full playback features.
-- **Xcode 15+**: The app is built with SwiftUI with a minimum build target of iOS 17 and requires Xcode 15 or later for building and running.
+- **Xcode 16.2+**: The project currently targets iOS 18.6 for the app target and uses SwiftUI APIs from the Xcode 16 generation.
 
 ## Features in Detail
 
@@ -59,6 +60,52 @@ MuzakKit is a SwiftUI-based iOS demo app that integrates with Apple Music throug
 ### Music Playback
 - If the user has an Apple Music subscription, they can play full tracks from the Apple Music catalog directly in the app.
 - The app supports basic playback features like play, pause, skip, and volume control.
+
+## Playback Speed
+
+MuzakKit includes a native playback speed control for the existing `ApplicationMusicPlayer.shared` player.
+
+- Supported range: `0.50×` to `2.00×`, using a SwiftUI `Slider` with `0.05` steps.
+- Now Playing shows a live speed slider below playback progress, plus presets for `0.75×`, `1×`, `1.25×`, `1.5×`, and `2×`.
+- Tapping the displayed speed value resets playback speed to `1.00×` with subtle haptic feedback.
+- Settings includes a Playback section with the same shared speed state, a reset action, and a Remember Playback Speed toggle.
+- When Remember Playback Speed is on, the preferred speed is saved with `UserDefaults` under `preferredPlaybackRate`.
+- When Remember Playback Speed is off, the current queue can still change speed, but new listening sessions and the next app launch start again at `1.00×`.
+- The UI keeps a separate preferred speed and actual MusicKit playback rate, so pausing playback does not move the slider to `0×`.
+- When playback starts, resumes, skips, or the queue changes, the app reapplies the preferred speed without using timers or private APIs.
+- The public MusicKit API used is `MusicPlayer.State.playbackRate` on the existing `ApplicationMusicPlayer.shared.state` object.
+- If MusicKit reports a different actual rate while playing, the app leaves playback functional and shows a subtle availability message.
+
+Known limitations:
+
+- MusicKit controls Apple Music playback; the app does not access, download, or manipulate raw Apple Music audio.
+- Some playback contexts or tracks may reject speed changes. In that case, the preferred speed remains visible, but the actual rate may differ.
+- Actual playback-rate behavior must be verified on an Apple device or simulator signed in with an Apple Music account.
+
+## Building without a Mac
+
+This repository can be edited on Windows and pushed to GitHub, then built on a macOS CI provider such as Codemagic.
+
+Use Xcode's command line tools on macOS. A CI archive command should look like:
+
+```sh
+xcodebuild \
+  -project MuzakKitApp.xcodeproj \
+  -scheme MuzakKitApp \
+  -sdk iphoneos \
+  -configuration Release \
+  archive
+```
+
+Do not commit signing certificates, provisioning profile UUIDs, developer credentials, or API keys. Configure signing and Apple Music capabilities in Apple Developer/Xcode or the CI provider's secure settings.
+
+## GitHub Actions CI
+
+Pushes and pull requests run an unsigned iOS Simulator build on GitHub Actions using `macos-latest`.
+
+The workflow lives at `.github/workflows/ios-build.yml` and can also be started manually from the Actions tab with "Run workflow". It prints the selected Xcode version, lists installed SDKs, resolves Swift Package Manager dependencies, and builds the shared `MuzakKitApp` scheme for `generic/platform=iOS Simulator` with code signing disabled.
+
+This validates Swift compilation, package resolution, resource processing, and linking. It does not validate real Apple Music authorization, subscription state, catalog playback, or whether a specific Apple Music track accepts `MusicPlayer.State.playbackRate` at runtime. Playback speed behavior still needs testing in a real MusicKit playback environment after the simulator build succeeds.
   
 ## Libraries & Frameworks Used
 

@@ -13,16 +13,30 @@ import SwiftUI
 @Observable
 class MusicPlayerService: MusicPlayerServiceProtocol {
 
+    static let minimumPlaybackRate: Float = 0.5
+    static let maximumPlaybackRate: Float = 2.0
+    static let defaultPlaybackRate: Float = 1.0
+
+    private static let preferredPlaybackRateKey = "preferredPlaybackRate"
+    private static let rememberPlaybackSpeedKey = "rememberPlaybackSpeed"
+    private static let playbackRateTolerance: Float = 0.01
+
     private var player: ApplicationMusicPlayer
     private var playerState: MusicPlayer.State
     private var playbackStatePublisher: AnyCancellable?
     private var queueChangePublisher: AnyCancellable?
+    private let userDefaults: UserDefaults
+    private var rejectedPlaybackRate: Float?
 
     var playbackState: MusicPlayer.PlaybackStatus = .stopped
     var currentItem: MusicPlayer.Queue.Entry?
     var artwork: Artwork?
     var hasQueue: Bool = false
     var currentPlayBackTime: TimeInterval? = 0.0
+    var preferredPlaybackRate: Float
+    var actualPlaybackRate: Float = MusicPlayerService.defaultPlaybackRate
+    var rememberPlaybackSpeed: Bool
+    var playbackRateMessage: String?
 
     private var timer: Timer?
 
@@ -30,21 +44,47 @@ class MusicPlayerService: MusicPlayerServiceProtocol {
         return (playerState.playbackStatus == .playing)
     }
 
-    init() {
+    init(userDefaults: UserDefaults = .standard) {
+
+        self.userDefaults = userDefaults
+
+        let shouldRememberPlaybackSpeed = userDefaults.object(forKey: Self.rememberPlaybackSpeedKey) as? Bool ?? true
+        self.rememberPlaybackSpeed = shouldRememberPlaybackSpeed
+        self.preferredPlaybackRate = Self.loadPreferredPlaybackRate(
+            from: userDefaults,
+            shouldRememberPlaybackSpeed: shouldRememberPlaybackSpeed
+        )
 
         self.player = ApplicationMusicPlayer.shared
         self.playerState = ApplicationMusicPlayer.shared.state
 
+        refreshActualPlaybackRate()
         setupPlayerStateListener()
         setupQueueChangeListener()
+    }
+
+    private static func loadPreferredPlaybackRate(
+        from userDefaults: UserDefaults,
+        shouldRememberPlaybackSpeed: Bool
+    ) -> Float {
+
+        guard shouldRememberPlaybackSpeed,
+              userDefaults.object(forKey: preferredPlaybackRateKey) != nil else {
+            return defaultPlaybackRate
+        }
+
+        return clampPlaybackRate(userDefaults.float(forKey: preferredPlaybackRateKey))
+    }
+
+    static func clampPlaybackRate(_ rate: Float) -> Float {
+        return min(max(rate, minimumPlaybackRate), maximumPlaybackRate)
     }
 
     private func setupPlayerStateListener() {
 
         playbackStatePublisher = player.state.objectWillChange
             .sink { [weak self] _ in
-                self?.updatePlaybackState()
-                self?.updateHasQueue()
+                self?.handlePlayerStateChanged()
             }
     }
 
@@ -52,9 +92,29 @@ class MusicPlayerService: MusicPlayerServiceProtocol {
 
         queueChangePublisher = player.queue.objectWillChange
             .sink { [weak self] _ in
-                self?.updateCurrentEntry()
-                self?.updateCurrentArtwork()
+                self?.handleQueueChanged()
             }
+    }
+
+    private func handlePlayerStateChanged() {
+
+        Task { @MainActor in
+            updatePlaybackState()
+            updateHasQueue()
+            refreshActualPlaybackRate()
+            reapplyPreferredPlaybackRateIfNeeded()
+        }
+    }
+
+    private func handleQueueChanged() {
+
+        Task { @MainActor in
+            rejectedPlaybackRate = nil
+            updateCurrentEntry()
+            updateCurrentArtwork()
+            updateHasQueue()
+            reapplyPreferredPlaybackRateIfNeeded()
+        }
     }
 
     func startPlayBackTimer() {
@@ -84,31 +144,23 @@ class MusicPlayerService: MusicPlayerServiceProtocol {
 
     private func updateCurrentEntry() {
 
-        Task { @MainActor in
-            self.currentItem = player.queue.currentEntry
-        }
+        self.currentItem = player.queue.currentEntry
     }
 
     private func updateCurrentArtwork() {
 
-        Task { @MainActor in
-            self.artwork = player.queue.currentEntry?.artwork
-        }
+        self.artwork = player.queue.currentEntry?.artwork
     }
 
     private func updatePlaybackState() {
 
-        Task { @MainActor in
-            self.playbackState = playerState.playbackStatus
-        }
+        self.playbackState = playerState.playbackStatus
     }
 
     private func updateHasQueue() {
 
-        Task { @MainActor in
-            withAnimation(.spring) {
-                self.hasQueue = !self.player.queue.entries.isEmpty
-            }
+        withAnimation(.spring) {
+            self.hasQueue = !self.player.queue.entries.isEmpty
         }
     }
 }
@@ -118,12 +170,14 @@ extension MusicPlayerService {
 
     func handleItemSelected<T>(for item: T, from items: MusicItemCollection<T>) where T: PlayableMusicItem {
 
+        resetPreferredPlaybackRateForNewListeningSessionIfNeeded()
         player.queue = .init(for: items, startingAt: item)
         beginPlaying()
     }
 
     func handlePlayback(for items: PlayableMusicItem) {
 
+        resetPreferredPlaybackRateForNewListeningSessionIfNeeded()
         player.queue = [items]
         beginPlaying()
     }
@@ -131,6 +185,7 @@ extension MusicPlayerService {
     func shufflePlayback(for items: PlayableMusicItem) {
 
         toggleSuffleState()
+        resetPreferredPlaybackRateForNewListeningSessionIfNeeded()
         player.queue = [items]
         beginPlaying()
     }
@@ -154,6 +209,7 @@ extension MusicPlayerService {
                 let nextIndex = loadedTracks.index(after: index)
                 let nextItem = loadedTracks[nextIndex]
 
+                resetPreferredPlaybackRateForNewListeningSessionIfNeeded()
                 player.queue = .init(for: loadedTracks, startingAt: nextItem)
                 beginPlaying()
             }
@@ -168,6 +224,7 @@ extension MusicPlayerService {
 
         let lastTrack = player.queue.entries.last
         let entries = player.queue.entries
+        resetPreferredPlaybackRateForNewListeningSessionIfNeeded()
         player.queue = .init(entries, startingAt: lastTrack)
 
         beginPlaying()
@@ -191,6 +248,9 @@ extension MusicPlayerService {
         Task {
             do {
                 try await player.skipToPreviousEntry()
+                await MainActor.run {
+                    self.reapplyPreferredPlaybackRateIfNeeded()
+                }
             } catch {
                 print("Failed to play previous track with error: \(error).")
             }
@@ -202,6 +262,9 @@ extension MusicPlayerService {
         Task {
             do {
                 try await player.skipToNextEntry()
+                await MainActor.run {
+                    self.reapplyPreferredPlaybackRateIfNeeded()
+                }
             } catch {
                 print("Failed to play next track with error: \(error).")
             }
@@ -210,13 +273,138 @@ extension MusicPlayerService {
 
     func beginPlaying() {
 
-        Task.detached {
+        Task {
             do {
                 try await self.player.prepareToPlay()
                 try await self.player.play()
+                await MainActor.run {
+                    self.applyPreferredPlaybackRate()
+                }
             } catch {
                 print("Failed to begin playback with error: \(error).")
             }
         }
+    }
+}
+
+// MARK: - Playback Speed
+extension MusicPlayerService {
+
+    func setPreferredPlaybackRate(_ rate: Float) {
+
+        preferredPlaybackRate = Self.clampPlaybackRate(rate)
+        rejectedPlaybackRate = nil
+        persistPreferredPlaybackRateIfNeeded()
+        applyPreferredPlaybackRate()
+    }
+
+    func setRememberPlaybackSpeed(_ rememberPlaybackSpeed: Bool) {
+
+        self.rememberPlaybackSpeed = rememberPlaybackSpeed
+        userDefaults.set(rememberPlaybackSpeed, forKey: Self.rememberPlaybackSpeedKey)
+
+        if rememberPlaybackSpeed {
+            persistPreferredPlaybackRateIfNeeded()
+        } else {
+            userDefaults.removeObject(forKey: Self.preferredPlaybackRateKey)
+        }
+    }
+
+    func resetPlaybackRate() {
+        setPreferredPlaybackRate(Self.defaultPlaybackRate)
+    }
+
+    func applyPreferredPlaybackRate() {
+
+        let rate = Self.clampPlaybackRate(preferredPlaybackRate)
+        preferredPlaybackRate = rate
+        playerState.playbackRate = rate
+        verifyPlaybackRateChange(requestedRate: rate)
+    }
+
+    private func reapplyPreferredPlaybackRateIfNeeded() {
+
+        refreshActualPlaybackRate()
+
+        guard playbackState == .playing else {
+            playbackRateMessage = nil
+            return
+        }
+
+        guard !Self.playbackRatesMatch(actualPlaybackRate, preferredPlaybackRate) else {
+            playbackRateMessage = nil
+            rejectedPlaybackRate = nil
+            return
+        }
+
+        if let rejectedPlaybackRate,
+           Self.playbackRatesMatch(rejectedPlaybackRate, preferredPlaybackRate) {
+            return
+        }
+
+        applyPreferredPlaybackRate()
+    }
+
+    private func refreshActualPlaybackRate() {
+        actualPlaybackRate = playerState.playbackRate
+    }
+
+    private func verifyPlaybackRateChange(requestedRate: Float) {
+
+        refreshActualPlaybackRate()
+
+        guard playbackState == .playing else {
+            playbackRateMessage = nil
+            logPlaybackSpeedDiagnostics(context: "rate requested while not playing")
+            return
+        }
+
+        if Self.playbackRatesMatch(actualPlaybackRate, requestedRate) {
+            playbackRateMessage = nil
+            rejectedPlaybackRate = nil
+        } else {
+            playbackRateMessage = "Playback speed is not available for this track."
+            rejectedPlaybackRate = requestedRate
+        }
+
+        logPlaybackSpeedDiagnostics(context: "rate requested")
+    }
+
+    private func persistPreferredPlaybackRateIfNeeded() {
+
+        guard rememberPlaybackSpeed else { return }
+
+        userDefaults.set(preferredPlaybackRate, forKey: Self.preferredPlaybackRateKey)
+    }
+
+    private func resetPreferredPlaybackRateForNewListeningSessionIfNeeded() {
+
+        guard !rememberPlaybackSpeed else { return }
+
+        preferredPlaybackRate = Self.defaultPlaybackRate
+        playbackRateMessage = nil
+    }
+
+    private static func playbackRatesMatch(_ lhs: Float, _ rhs: Float) -> Bool {
+        return abs(lhs - rhs) <= playbackRateTolerance
+    }
+
+    private func logPlaybackSpeedDiagnostics(context: String) {
+        #if DEBUG
+        let songTitle = currentItem?.title ?? "Unknown"
+        let playbackTime = player.playbackTime
+        let time = playbackTime.isFinite ? String(format: "%.1f", playbackTime) : "n/a"
+
+        print(
+            """
+            Playback speed diagnostics (\(context))
+            Song: \(songTitle)
+            Preferred speed: \(String(format: "%.2f", preferredPlaybackRate))
+            MusicKit playbackRate: \(String(format: "%.2f", actualPlaybackRate))
+            Status: \(playbackState)
+            Playback time: \(time)
+            """
+        )
+        #endif
     }
 }
