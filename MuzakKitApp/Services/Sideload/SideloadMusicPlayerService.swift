@@ -30,7 +30,7 @@ final class SideloadMusicPlayerService {
     var nowPlayingItem: MPMediaItem?
     var playbackState: MPMusicPlaybackState = .stopped
     var preferredPlaybackRate: Float
-    var actualPlaybackRate: Float = Self.defaultPlaybackRate
+    var actualPlaybackRate: Float = 1.0
     var playbackRateMessage: String?
 
     init(userDefaults: UserDefaults = .standard) {
