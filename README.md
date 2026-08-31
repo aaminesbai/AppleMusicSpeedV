@@ -30,6 +30,7 @@ MuzakKit is a SwiftUI-based iOS demo app that integrates with Apple Music throug
   - Artist details with discography
   - Playlist details with track listing
 - **Music Playback**: Play music directly from the Apple Music catalog if the user has an active subscription.
+- **Sideload Playback**: Use a free sideload fallback based on MediaPlayer for albums, playlists, and songs exposed by the device Music library.
 - **Playback Speed**: Adjust playback speed from the Now Playing screen or Settings.
   
 ## Prerequisites
@@ -60,6 +61,7 @@ MuzakKit is a SwiftUI-based iOS demo app that integrates with Apple Music throug
 ### Music Playback
 - If the user has an Apple Music subscription, they can play full tracks from the Apple Music catalog directly in the app.
 - The app supports basic playback features like play, pause, skip, and volume control.
+- The Sideload tab uses `MPMediaLibrary` and `MPMusicPlayerController.applicationQueuePlayer` so personal sideload builds can browse and play the device Music library without requesting a MusicKit developer token.
 
 ## Playback Speed
 
@@ -118,7 +120,9 @@ This validates Swift compilation, package resolution, resource processing, and l
 
 These workflows do not use App Store Connect, TestFlight, Apple Distribution certificates, App Store provisioning profiles, or API keys. The bundle identifier is `com.aaminesbai.AppleMusicSpeedV`.
 
-MusicKit remains in the app, but free sideloading has an Apple-platform limitation: Apple documents MusicKit app integration through the MusicKit App Service for an App ID, while a free Apple Account/Personal Team is limited compared with the paid Apple Developer Program. The app may install through AltStore, but Apple Music authorization, library access, catalog playback, and playback-rate behavior still need runtime testing on the target iPhone with the user's Apple Music account.
+MusicKit remains in the app, but free sideloading has an Apple-platform limitation: Apple documents MusicKit app integration through the MusicKit App Service for an App ID, while a free Apple Account/Personal Team is limited compared with the paid Apple Developer Program. The app may install through AltStore, but Apple Music catalog requests, MusicKit item detail loading, Apple Music playback, and `MusicPlayer.State.playbackRate` may fail with a developer token error.
+
+The Sideload tab is the free fallback path. It avoids MusicKit token generation by using MediaPlayer APIs against the device Music library. It can show albums, playlists, and songs that iOS exposes through `MPMediaLibrary`, play them with `MPMusicPlayerController`, and apply the same 0.50× to 2.00× playback speed preference through `currentPlaybackRate`. It does not replace Apple Music catalog search, recommendations, or MusicKit-specific detail pages.
   
 ## Libraries & Frameworks Used
 

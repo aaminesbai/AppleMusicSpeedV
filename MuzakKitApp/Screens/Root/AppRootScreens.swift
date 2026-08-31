@@ -13,6 +13,7 @@ enum AppRootScreen: Hashable, CaseIterable, Identifiable {
     case browse
     case library
     case search
+    case sideload
     case settings
 
     var id: AppRootScreen { self }
@@ -67,6 +68,8 @@ extension AppRootScreen {
             Label("Library", systemImage: Symbols.musicNoteList.name)
         case .search:
             Label("Search", systemImage: Symbols.search.name)
+        case .sideload:
+            Label("Sideload", systemImage: Symbols.musicNoteList.name)
         case .settings:
             Label("Settings", systemImage: Symbols.settings.name)
         }
@@ -87,6 +90,10 @@ extension AppRootScreen {
         case .search:
             AppRootNavigation {
                 SearchScreen()
+            }
+        case .sideload:
+            AppRootNavigation {
+                SideloadLibraryScreen()
             }
         case .settings:
             AppRootNavigation {

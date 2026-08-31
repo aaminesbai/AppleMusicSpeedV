@@ -54,6 +54,11 @@ struct AppRootView: View {
                         AppRootScreen.search.label
                     }
 
+                    Tab(value: AppRootScreen.sideload) { AppRootScreen.sideload.destination
+                    } label: {
+                        AppRootScreen.sideload.label
+                    }
+
                     Tab(value: AppRootScreen.settings) { AppRootScreen.settings.destination
                     } label: {
                         AppRootScreen.settings.label
@@ -123,5 +128,6 @@ struct AppRootView: View {
     AppRootView(selection: .constant(.browse))
         .environment(musicService)
         .environment(MusicPlayerService())
+        .environment(SideloadMusicPlayerService())
         .environment(NavPath())
 }
