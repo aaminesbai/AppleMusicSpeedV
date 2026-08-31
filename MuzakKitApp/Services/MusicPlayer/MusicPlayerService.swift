@@ -71,7 +71,7 @@ class MusicPlayerService: MusicPlayerServiceProtocol {
     private static let playbackRateTolerance: Float = 0.01
 
     private var player: ApplicationMusicPlayer
-    private var playerState: MusicPlayer.State
+    private var playerState: MusicKit.MusicPlayer.State
     private let mediaPlayer = MPMusicPlayerController.applicationQueuePlayer
     private var localFilePlayer: AVPlayer?
     private var localFileQueue: [MPMediaItem] = []
@@ -83,8 +83,8 @@ class MusicPlayerService: MusicPlayerServiceProtocol {
     private var rejectedPlaybackRate: Float?
     private var playbackSource: PlaybackSource = .musicKit
 
-    var playbackState: MusicPlayer.PlaybackStatus = .stopped
-    var currentItem: MusicPlayer.Queue.Entry?
+    var playbackState: MusicKit.MusicPlayer.PlaybackStatus = .stopped
+    var currentItem: MusicKit.MusicPlayer.Queue.Entry?
     var artwork: Artwork?
     var localArtworkImage: UIImage?
     var displayTitle: String = "Song Title"
@@ -290,7 +290,7 @@ class MusicPlayerService: MusicPlayerServiceProtocol {
         }
     }
 
-    private func musicKitDuration(for entry: MusicPlayer.Queue.Entry?) -> TimeInterval? {
+    private func musicKitDuration(for entry: MusicKit.MusicPlayer.Queue.Entry?) -> TimeInterval? {
 
         guard let item = entry?.item else { return nil }
 

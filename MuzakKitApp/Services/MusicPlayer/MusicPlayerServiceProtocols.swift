@@ -12,8 +12,8 @@ import UIKit
 
 protocol MusicPlayerServiceProtocol {
 
-    var playbackState: MusicPlayer.PlaybackStatus { get }
-    var currentItem: MusicPlayer.Queue.Entry? { get }
+    var playbackState: MusicKit.MusicPlayer.PlaybackStatus { get }
+    var currentItem: MusicKit.MusicPlayer.Queue.Entry? { get }
     var artwork: Artwork? { get }
     var localArtworkImage: UIImage? { get }
     var displayTitle: String { get }
